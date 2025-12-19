@@ -116,18 +116,38 @@
         <div class="flex flex-wrap items-center gap-4 bg-white p-4 rounded-xl border shadow-sm">
             <div class="flex items-center space-x-2">
                 <label for="timeRange" class="text-sm font-medium">时间范围:</label>
-                <select id="timeRange" onchange="refreshData()" class="h-9 w-[180px] rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-900">
+                <select id="timeRange" onchange="handleTimeRangeChange()" class="h-9 w-[180px] rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-900">
+                    <option value="30min">近 30 分钟</option>
                     <option value="1h">近 1 小时</option>
-                    <option value="3h">近 3 小时</option>
                     <option value="6h">近 6 小时</option>
-                    <option value="12h">近 12 小时</option>
-                    <option value="24h" selected>近 24 小时</option>
-                    <option value="today">当天</option>
+                    <option value="today">今日</option>
+                    <option value="yesterday">昨日</option>
                     <option value="3d">近 3 天</option>
                     <option value="7d">近 7 天</option>
                     <option value="14d">近 14 天</option>
                     <option value="31d">近 31 天</option>
+                    <option value="custom">自定义</option>
                 </select>
+            </div>
+            <!-- Custom Time Inputs -->
+            <div id="customTimeInputs" class="hidden flex-wrap items-center gap-2 mt-2 w-full sm:w-auto">
+                <div class="flex items-center space-x-1">
+                    <input type="number" id="customDays" placeholder="0" class="h-8 w-16 rounded-md border border-slate-200 px-2 text-sm" min="0">
+                    <span class="text-xs">天</span>
+                </div>
+                <div class="flex items-center space-x-1">
+                    <input type="number" id="customHours" placeholder="0" class="h-8 w-16 rounded-md border border-slate-200 px-2 text-sm" min="0" max="23">
+                    <span class="text-xs">小时</span>
+                </div>
+                <div class="flex items-center space-x-1">
+                    <input type="number" id="customMinutes" placeholder="0" class="h-8 w-16 rounded-md border border-slate-200 px-2 text-sm" min="0" max="59">
+                    <span class="text-xs">分</span>
+                </div>
+                <div class="flex items-center space-x-1">
+                    <input type="number" id="customSeconds" placeholder="0" class="h-8 w-16 rounded-md border border-slate-200 px-2 text-sm" min="0" max="59">
+                    <span class="text-xs">秒</span>
+                </div>
+                <button onclick="refreshData()" class="h-8 px-3 bg-slate-900 text-white rounded-md text-xs hover:bg-slate-800">应用</button>
             </div>
             <div class="flex items-center space-x-2">
                 <label for="interval" class="text-sm font-medium">粒度:</label>
@@ -850,26 +870,60 @@
             return date.toISOString().slice(0, 19) + 'Z';
         }
 
+        function handleTimeRangeChange() {
+            const range = document.getElementById('timeRange').value;
+            const customInputs = document.getElementById('customTimeInputs');
+            if (range === 'custom') {
+                customInputs.classList.remove('hidden');
+                customInputs.classList.add('flex');
+            } else {
+                customInputs.classList.add('hidden');
+                customInputs.classList.remove('flex');
+                refreshData();
+            }
+        }
+
         function calculateTimeRange() {
             const range = document.getElementById('timeRange').value;
             const now = new Date();
-            const endTime = new Date(now);
+            let endTime = new Date(now);
             let startTime;
 
             switch(range) {
+                case '30min': startTime = new Date(now.getTime() - 30 * 60 * 1000); break;
                 case '1h': startTime = new Date(now.getTime() - 1 * 60 * 60 * 1000); break;
-                case '3h': startTime = new Date(now.getTime() - 3 * 60 * 60 * 1000); break;
                 case '6h': startTime = new Date(now.getTime() - 6 * 60 * 60 * 1000); break;
-                case '12h': startTime = new Date(now.getTime() - 12 * 60 * 60 * 1000); break;
-                case '24h': startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000); break;
                 case 'today': 
                     startTime = new Date(now);
                     startTime.setHours(0, 0, 0, 0);
+                    break;
+                case 'yesterday':
+                    startTime = new Date(now);
+                    startTime.setDate(now.getDate() - 1);
+                    startTime.setHours(0, 0, 0, 0);
+                    
+                    endTime = new Date(now);
+                    endTime.setDate(now.getDate() - 1);
+                    endTime.setHours(23, 59, 59, 999);
                     break;
                 case '3d': startTime = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000); break;
                 case '7d': startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); break;
                 case '14d': startTime = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000); break;
                 case '31d': startTime = new Date(now.getTime() - 31 * 24 * 60 * 60 * 1000); break;
+                case 'custom':
+                    const days = parseInt(document.getElementById('customDays').value) || 0;
+                    const hours = parseInt(document.getElementById('customHours').value) || 0;
+                    const minutes = parseInt(document.getElementById('customMinutes').value) || 0;
+                    const seconds = parseInt(document.getElementById('customSeconds').value) || 0;
+                    
+                    const totalMs = ((days * 24 * 60 * 60) + (hours * 60 * 60) + (minutes * 60) + seconds) * 1000;
+                    if (totalMs > 0) {
+                        startTime = new Date(now.getTime() - totalMs);
+                    } else {
+                        // Default to 1 hour if nothing entered
+                        startTime = new Date(now.getTime() - 60 * 60 * 1000);
+                    }
+                    break;
                 default: startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
             }
 
@@ -929,7 +983,7 @@
             const valueData = [];
 
             // Context for formatting
-            const range = document.getElementById('timeRange')?.value || '24h';
+            const range = document.getElementById('timeRange')?.value || '30min';
             const interval = document.getElementById('interval')?.value || 'auto';
             const longRanges = ['3d', '7d', '14d', '31d'];
             
@@ -946,6 +1000,12 @@
                 if (details.length <= 32) isDayInterval = true;
             }
 
+            // Calculate time span of the data
+            let span = 0;
+            if (details.length > 0) {
+                 span = details[details.length - 1].Timestamp - details[0].Timestamp;
+            }
+
             details.forEach(item => {
                 const date = new Date(item.Timestamp * 1000);
                 let label;
@@ -953,8 +1013,8 @@
                 if (isDayInterval) {
                     // Show YYYY-MM-DD
                     label = `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
-                } else if (longRanges.includes(range)) {
-                    // Show MM-DD HH:mm for long ranges with finer granularity
+                } else if (span > 86400 || longRanges.includes(range) || (range === 'custom' && span > 86400)) {
+                    // Show MM-DD HH:mm for long ranges or custom > 24h
                     label = `${(date.getMonth()+1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
                 } else {
                     // Show HH:mm for short ranges
