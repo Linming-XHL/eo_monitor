@@ -812,6 +812,13 @@
             'VE': 'Venezuela', 'VN': 'Vietnam', 'YE': 'Yemen', 'ZM': 'Zambia', 'ZW': 'Zimbabwe'
         };
 
+        const worldNameMap = {};
+        Object.keys(codeToMapName).forEach(code => {
+            if (countryMap[code]) {
+                worldNameMap[codeToMapName[code]] = countryMap[code];
+            }
+        });
+
         const metricsConfig = {
             traffic: ['l7Flow_flux', 'l7Flow_inFlux', 'l7Flow_outFlux'],
             bandwidth: ['l7Flow_bandwidth', 'l7Flow_inBandwidth', 'l7Flow_outBandwidth'],
@@ -1796,6 +1803,7 @@
                         type: 'map',
                         mapType: 'world',
                         roam: true,
+                        nameMap: worldNameMap,
                         itemStyle: {
                             emphasis: { label: { show: true } }
                         },
